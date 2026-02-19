@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Burpsuite Professional Installer for Fedora Linux (WSL Compatible)
-# Run this script from within the Burpsuite-Professional directory
 
 set -e  # Exit on error
 
@@ -23,6 +22,27 @@ fi
 echo "Installing Dependencies..."
 sudo dnf update -y
 sudo dnf install -y git wget java-21-openjdk java-21-openjdk-devel
+
+# Check if we're in the repo directory or need to clone
+if [ ! -f "loader.jar" ]; then
+    echo ""
+    echo "Cloning repository..."
+    
+    # Remove existing directory if it exists
+    if [ -d "$HOME/Burpsuite-Professional-Fedora-WSL" ]; then
+        echo "Removing existing installation directory..."
+        rm -rf "$HOME/Burpsuite-Professional-Fedora-WSL"
+    fi
+    
+    # Clone the repository
+    git clone https://github.com/GITWithAkshay/Burpsuite-Professional-Fedora-WSL.git "$HOME/Burpsuite-Professional-Fedora-WSL"
+    cd "$HOME/Burpsuite-Professional-Fedora-WSL"
+    echo "✓ Repository cloned"
+    echo ""
+fi
+
+# Get the installation directory (current directory)
+INSTALL_DIR="$(pwd)"
 
 # Verify Java installation
 echo ""
@@ -47,6 +67,8 @@ if [ ! -f "loader.jar" ]; then
     exit 1
 fi
 
+echo "✓ All required files present"
+
 # Create launcher script
 echo ""
 echo "Creating launcher script..."
@@ -59,11 +81,11 @@ if grep -qi microsoft /proc/version 2>/dev/null; then
     export DISPLAY=\${DISPLAY:-:0}
 fi
 
-# Get script directory
-SCRIPT_DIR="\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+# Installation directory
+INSTALL_DIR="$INSTALL_DIR"
 
 # Start loader in background
-java -jar "\$SCRIPT_DIR/loader.jar" &
+java -jar "\$INSTALL_DIR/loader.jar" &
 LOADER_PID=\$!
 
 # Wait a moment for loader to initialize
@@ -75,9 +97,9 @@ java --add-opens=java.desktop/javax.swing=ALL-UNNAMED \\
      --add-opens=java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED \\
      --add-opens=java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED \\
      --add-opens=java.base/jdk.internal.org.objectweb.asm.Opcodes=ALL-UNNAMED \\
-     -javaagent:"\$SCRIPT_DIR/loader.jar" \\
+     -javaagent:"\$INSTALL_DIR/loader.jar" \\
      -noverify \\
-     -jar "\$SCRIPT_DIR/burpsuite_pro_v$version.jar"
+     -jar "\$INSTALL_DIR/burpsuite_pro_v$version.jar"
 
 # Clean up loader process on exit
 kill \$LOADER_PID 2>/dev/null || true
@@ -95,6 +117,8 @@ echo ""
 echo "==================================="
 echo "Installation Complete!"
 echo "==================================="
+echo ""
+echo "Installation directory: $INSTALL_DIR"
 echo ""
 echo "To run Burpsuite Professional, use:"
 echo "  burpsuitepro"
