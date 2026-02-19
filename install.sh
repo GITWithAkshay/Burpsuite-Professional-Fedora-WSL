@@ -72,38 +72,52 @@ echo "✓ All required files present"
 # Create launcher script
 echo ""
 echo "Creating launcher script..."
-cat > burpsuitepro << EOF
+cat > burpsuitepro << 'LAUNCHER_EOF'
 #!/bin/bash
-# Burpsuite Professional Launcher
+# Burpsuite Professional Launcher Wrapper
+# This wrapper ensures proper permissions
+
+# Check if running as root
+if [ "$EUID" -ne 0 ]; then
+    echo "Launching Burpsuite Professional..."
+    sudo "$0" "$@"
+    exit $?
+fi
 
 # Set display for WSL if needed
 if grep -qi microsoft /proc/version 2>/dev/null; then
-    export DISPLAY=\${DISPLAY:-:0}
+    export DISPLAY=${DISPLAY:-:0}
 fi
 
-# Installation directory
-INSTALL_DIR="$INSTALL_DIR"
+# Installation directory - dynamically determine
+if [ -d "/root/Burpsuite-Professional-Fedora-WSL" ]; then
+    INSTALL_DIR="/root/Burpsuite-Professional-Fedora-WSL"
+elif [ -d "$HOME/Burpsuite-Professional-Fedora-WSL" ]; then
+    INSTALL_DIR="$HOME/Burpsuite-Professional-Fedora-WSL"
+else
+    INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
 
 # Start loader in background
-java -jar "\$INSTALL_DIR/loader.jar" &
-LOADER_PID=\$!
+java -jar "$INSTALL_DIR/loader.jar" &
+LOADER_PID=$!
 
 # Wait a moment for loader to initialize
 sleep 2
 
 # Launch Burpsuite Professional
-java --add-opens=java.desktop/javax.swing=ALL-UNNAMED \\
-     --add-opens=java.base/java.lang=ALL-UNNAMED \\
-     --add-opens=java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED \\
-     --add-opens=java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED \\
-     --add-opens=java.base/jdk.internal.org.objectweb.asm.Opcodes=ALL-UNNAMED \\
-     -javaagent:"\$INSTALL_DIR/loader.jar" \\
-     -noverify \\
-     -jar "\$INSTALL_DIR/burpsuite_pro_v$version.jar"
+java --add-opens=java.desktop/javax.swing=ALL-UNNAMED \
+     --add-opens=java.base/java.lang=ALL-UNNAMED \
+     --add-opens=java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED \
+     --add-opens=java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED \
+     --add-opens=java.base/jdk.internal.org.objectweb.asm.Opcodes=ALL-UNNAMED \
+     -javaagent:"$INSTALL_DIR/loader.jar" \
+     -noverify \
+     -jar "$INSTALL_DIR/burpsuite_pro_v2026.jar"
 
 # Clean up loader process on exit
-kill \$LOADER_PID 2>/dev/null || true
-EOF
+kill $LOADER_PID 2>/dev/null || true
+LAUNCHER_EOF
 
 chmod +x burpsuitepro
 
