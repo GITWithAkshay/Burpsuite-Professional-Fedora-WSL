@@ -1,5 +1,5 @@
-# Set Wget Progress to Silent, Becuase it slows down Downloading by 50x
-echo "Setting Wget Progress to Silent, Becuase it slows down Downloading by 50x`n"
+# Set Wget Progress to Silent, Because it slows down Downloading by 50x
+echo "Setting Wget Progress to Silent for faster downloads`n"
 $ProgressPreference = 'SilentlyContinue'
 
 # Check JDK-21 Availability or Download JDK-21
@@ -29,16 +29,46 @@ if (!($jre8)){
 }
 
 # Download Burpsuite Professional
-Write-Host "Downloading Burp Suite Professional Latest..."
-$version = "2025"
-# Invoke-WebRequest -Uri "https://portswigger.net/burp/releases/download?product=pro&version=$version&type=Jar" `
-#   -OutFile "burpsuite_pro_v$version.jar"
-Invoke-WebRequest -Uri "https://portswigger.net/burp/releases/download?product=pro&type=Jar" `
-  -OutFile "burpsuite_pro_v$version.jar"
+Write-Host "`nDownloading Burp Suite Professional Latest (v2026)..."
+$version = "2026"
+
+# Check if already downloaded
+if (Test-Path "burpsuite_pro_v$version.jar") {
+    Write-Host "Burpsuite Professional v$version already exists, skipping download" -ForegroundColor Green
+} else {
+    # Use faster GitHub download with progress bar
+    $url = "https://github.com/xiv3r/Burpsuite-Professional/releases/download/burpsuite-pro/burpsuite_pro_v$version.jar"
+    
+    # Show progress and download at full speed
+    Write-Host "Downloading from GitHub (this may take a few minutes)..." -ForegroundColor Cyan
+    
+    # Use WebClient for faster download with progress
+    $webClient = New-Object System.Net.WebClient
+    
+    # Register progress event
+    Register-ObjectEvent -InputObject $webClient -EventName DownloadProgressChanged -SourceIdentifier WebClient.DownloadProgressChanged -Action {
+        Write-Progress -Activity "Downloading Burpsuite Professional" -Status "$($EventArgs.ProgressPercentage)% Complete" -PercentComplete $EventArgs.ProgressPercentage
+    } | Out-Null
+    
+    try {
+        $webClient.DownloadFileAsync($url, "$PWD\burpsuite_pro_v$version.jar")
+        while ($webClient.IsBusy) {
+            Start-Sleep -Milliseconds 100
+        }
+        Write-Progress -Activity "Downloading Burpsuite Professional" -Completed
+        Write-Host "Download completed successfully!" -ForegroundColor Green
+    } catch {
+        Write-Host "Error downloading: $_" -ForegroundColor Red
+        exit 1
+    } finally {
+        Unregister-Event -SourceIdentifier WebClient.DownloadProgressChanged -ErrorAction SilentlyContinue
+        $webClient.Dispose()
+    }
+}
 
 # Creating Burp.bat file with command for execution
 if (Test-Path burp.bat) {rm burp.bat}
-$path = "java --add-opens=java.desktop/javax.swing=ALL-UNNAMED--add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-opens=java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED --add-opens=java.base/jdk.internal.org.objectweb.asm.Opcodes=ALL-UNNAMED -javaagent:`"$pwd\loader.jar`" -noverify -jar `"$pwd\burpsuite_pro_v$version.jar`""
+$path = "java --add-opens=java.desktop/javax.swing=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-opens=java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED --add-opens=java.base/jdk.internal.org.objectweb.asm.Opcodes=ALL-UNNAMED -javaagent:`"$pwd\loader.jar`" -noverify -jar `"$pwd\burpsuite_pro_v$version.jar`""
 $path | add-content -path Burp.bat
 echo "`nBurp.bat file is created"
 
