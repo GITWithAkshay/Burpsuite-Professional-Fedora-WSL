@@ -75,13 +75,11 @@ echo "Creating launcher script..."
 cat > burpsuitepro << 'LAUNCHER_EOF'
 #!/bin/bash
 # Burpsuite Professional Launcher Wrapper
-# This wrapper ensures proper permissions
 
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then
     echo "Launching Burpsuite Professional..."
-    sudo "$0" "$@"
-    exit $?
+    exec sudo /usr/local/bin/burpsuitepro "$@"
 fi
 
 # Set display for WSL if needed
@@ -89,13 +87,14 @@ if grep -qi microsoft /proc/version 2>/dev/null; then
     export DISPLAY=${DISPLAY:-:0}
 fi
 
-# Installation directory - dynamically determine
-if [ -d "/root/Burpsuite-Professional-Fedora-WSL" ]; then
-    INSTALL_DIR="/root/Burpsuite-Professional-Fedora-WSL"
-elif [ -d "$HOME/Burpsuite-Professional-Fedora-WSL" ]; then
-    INSTALL_DIR="$HOME/Burpsuite-Professional-Fedora-WSL"
-else
-    INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Installation directory
+INSTALL_DIR="/root/Burpsuite-Professional-Fedora-WSL"
+
+# Verify files exist
+if [ ! -f "$INSTALL_DIR/loader.jar" ] || [ ! -f "$INSTALL_DIR/burpsuite_pro_v2026.jar" ]; then
+    echo "ERROR: Required files not found in $INSTALL_DIR"
+    echo "Please reinstall using the installation script"
+    exit 1
 fi
 
 # Start loader in background
